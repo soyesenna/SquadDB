@@ -21,7 +21,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class CommandLineInterface {
-    private static String mascot = ""\n" +
+    private static String mascot = "\n" +
             "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡠⢄⠦⡰⢄⢄⡀⠀⠀⠀⢀⠠⡄⠴⠤⢤⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
             "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠⡪⡑⠜⠐⠑⠘⠐⠅⢎⠦⣀⢔⠕⡱⠘⠈⠊⠂⠢⡙⢔⢄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
             "⠀⠀⠀⠀⠀⠀⠀⠀⠀⡰⡱⠜⠀⠀⠀⠀⠀⠀⠀⢈⢆⢕⢌⡂⠀⠀⠀⠀⠀⠀⠀⠑⡅⡣⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
