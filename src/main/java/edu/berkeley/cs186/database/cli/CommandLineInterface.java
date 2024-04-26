@@ -21,7 +21,22 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class CommandLineInterface {
-    private static String mascot = "\n\\|/  ___------___\n \\__|--%s______%s--|\n    |  %-9s |\n     ---______---\n";
+    private static String mascot = ""\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡠⢄⠦⡰⢄⢄⡀⠀⠀⠀⢀⠠⡄⠴⠤⢤⣀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡠⡪⡑⠜⠐⠑⠘⠐⠅⢎⠦⣀⢔⠕⡱⠘⠈⠊⠂⠢⡙⢔⢄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⡰⡱⠜⠀⠀⠀⠀⠀⠀⠀⢈⢆⢕⢌⡂⠀⠀⠀⠀⠀⠀⠀⠑⡅⡣⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⢀⢇⠎⠀⠀⠀⠀⠀⠀⠀⠀⡎⡢⠁⢪⡘⠄⠀⠀⠀⠀⠀⠀⠀⢸⢈⠇⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⡣⠀⠀⠀⠀⠀⠀⠀⠀⡇⡪⠀⡬⡨⠃⠀⠀⠀⠀⠀⠀⠀⢸⢐⡅⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⢱⡙⡄⠀⢀⢀⡄⣠⡀⠀⠘⢌⠣⡪⠈⠀⣀⢠⣀⣀⠀⠀⢀⠎⠦⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠱⡙⢆⠕⡅⠎⠰⢉⠳⡄⠀⠀⠀⢠⠪⡢⠑⠔⢌⡙⢔⢍⠊⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡰⡊⡪⡪⠲⠤⡢⡒⢕⠌⠀⢀⠀⠘⢌⠲⠤⠤⡢⡑⠕⡌⢦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⡜⢌⠊⠀⠈⠑⠑⠈⠈⠀⢠⠪⡑⢕⢄⠀⠉⠘⠂⠁⠀⠀⠘⢔⢕⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⢀⢇⠕⠀⠀⠀⠀⠀⠀⠀⠀⡇⢕⠀⢱⢘⠄⠀⠀⠀⠀⠀⠀⠀⢸⢈⠇⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⢕⠀⠀⠀⠀⠀⠀⠀⠀⢇⢕⡀⡜⢔⠁⠀⠀⠀⠀⠀⠀⠀⢸⢐⠅⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠱⡑⢆⠀⠀⠀⠀⠀⠀⠀⢈⡢⡑⢜⡂⠀⠀⠀⠀⠀⠀⠀⡠⡣⡑⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠑⢕⠱⡢⢄⢄⡠⡠⡢⡱⠨⠊⠢⡙⠦⢤⢀⢄⡠⢢⢊⠪⠂⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠘⠐⠅⠪⠂⠑⠀⠀⠀⠀⠈⠘⠂⠣⠢⠑⠁⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" +
+            "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀\n" ;
     private static int[] version = { 1, 8, 6 }; // {major, minor, build}
     private static String label = "sp21";
     private static Random generator = new Random();
@@ -37,7 +52,7 @@ public class CommandLineInterface {
             startup();
 
         // Welcome message
-        System.out.printf(mascot, "o", "o", institution[generator.nextInt(institution.length)]);
+        System.out.printf(mascot);
         System.out.printf("\nWelcome to RookieDB (v%d.%d.%d-%s)\n", version[0], version[1], version[2], label);
 
         // Basic database for project 0 through 3
