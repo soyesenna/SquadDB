@@ -190,23 +190,44 @@ class LeafNode extends BPlusNode {
     @Override
     public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
             float fillFactor) {
-        // TODO(proj2): implement
+        int maxSize = (int) Math.ceil(2 * metadata.getOrder() * fillFactor);
 
-        int d = metadata.getOrder();
+        Optional<Pair<DataBox, Long>> result = Optional.empty();
 
+        while (data.hasNext()) {
+            Pair<DataBox, RecordId> nextData = data.next();
+            keys.add(nextData.getFirst());
+            rids.add(nextData.getSecond());
+            if (keys.size() > maxSize) {
+                result = split();
+                break;
+            }
+        }
 
-        return Optional.empty();
+        sync();
+        return result;
+    }
+
+    private Optional<Pair<DataBox, Long>> split() {
+        List<DataBox> newKeys = new ArrayList<>();
+        List<RecordId> newRids = new ArrayList<>();
+        newKeys.add(keys.remove(keys.size() - 1));
+        newRids.add(rids.remove(rids.size() - 1));
+
+        LeafNode newNode = new LeafNode(metadata, bufferManager, newKeys, newRids, this.rightSibling, treeContext);
+
+        this.rightSibling = Optional.of(newNode.getPage().getPageNum());
+        return Optional.of(new Pair<>(newNode.keys.get(0), newNode.page.getPageNum()));
     }
 
     // See BPlusNode.remove.
     @Override
     public void remove(DataBox key) {
         Optional<RecordId> rid = getKey(key);
-
-        if (rid.isPresent()) {
+        rid.ifPresent((recordId -> {
             keys.remove(key);
-            rids.remove(rid.get());
-        }
+            rids.remove(recordId);
+        }));
         sync();
     }
 
