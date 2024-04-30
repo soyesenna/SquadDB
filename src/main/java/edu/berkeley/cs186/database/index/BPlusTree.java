@@ -199,7 +199,7 @@ public class BPlusTree {
     public Iterator<RecordId> scanAll() {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
-        return new BPlusTreeIterator(root.getLeftmostLeaf());
+        return new BPlusTreeIterator(root.getLeftmostLeaf(), Optional.empty());
     }
 
     /**
@@ -230,7 +230,7 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        return new BPlusTreeIterator(root.getLeftmostLeaf(), key);
+        return new BPlusTreeIterator(root.getLeftmostLeaf(), Optional.of(key));
     }
 
     /**
@@ -428,12 +428,12 @@ public class BPlusTree {
     private class BPlusTreeIterator implements Iterator<RecordId> {
         private Iterator<RecordId> iterator;
         private LeafNode node;
-        private Optional<DataBox> key = Optional.empty();
+        private Optional<DataBox> key;
 
-        BPlusTreeIterator(LeafNode node, DataBox key) {
+        BPlusTreeIterator(LeafNode node, Optional<DataBox> key) {
             this.node = node;
-            this.key = Optional.of(key);
-            this.iterator = node.scanGreaterEqual(key);
+            this.key = key;
+            this.iterator = getIterator();
         }
 
         BPlusTreeIterator(LeafNode node) {
@@ -454,9 +454,14 @@ public class BPlusTree {
             if (!rightSibling.isPresent()) return false;
             rightSibling.ifPresent((rightNode) -> {
                 this.node = rightNode;
-                this.iterator = key.isPresent() ? this.node.scanGreaterEqual(this.key.get()) : this.node.scanAll();
+                this.iterator = getIterator();
             });
             return hasNext();
+        }
+
+        private Iterator<RecordId> getIterator() {
+            if (this.key.isPresent()) return this.node.scanGreaterEqual(this.key.get());
+            else return this.node.scanAll();
         }
 
         @Override
