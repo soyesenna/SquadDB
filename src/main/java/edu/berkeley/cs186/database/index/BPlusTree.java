@@ -436,11 +436,6 @@ public class BPlusTree {
             this.iterator = getIterator();
         }
 
-        BPlusTreeIterator(LeafNode node) {
-            this.node = node;
-            this.iterator = node.scanAll();
-        }
-
         @Override
         public boolean hasNext() {
             if (iterator.hasNext()) return true;
