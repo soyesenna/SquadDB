@@ -15,6 +15,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A persistent B+ tree.
@@ -145,9 +146,7 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): implement
-
-        return Optional.empty();
+        return root.get(key).getKey(key);
     }
 
     /**
@@ -200,10 +199,7 @@ public class BPlusTree {
     public Iterator<RecordId> scanAll() {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
-
-        // TODO(proj2): Return a BPlusTreeIterator.
-
-        return Collections.emptyIterator();
+        return new BPlusTreeIterator(root.getLeftmostLeaf());
     }
 
     /**
@@ -234,9 +230,7 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): Return a BPlusTreeIterator.
-
-        return Collections.emptyIterator();
+        return new BPlusTreeIterator(root.getLeftmostLeaf(), key);
     }
 
     /**
@@ -253,12 +247,24 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): implement
         // Note: You should NOT update the root variable directly.
         // Use the provided updateRoot() helper method to change
         // the tree's root if the old root splits.
 
-        return;
+        Optional<Pair<DataBox, Long>> putResult = root.put(key, rid);
+        putResult.ifPresent(this::createNewRoot);
+    }
+
+    private void createNewRoot(Pair<DataBox, Long> result) {
+        List<DataBox> key = new ArrayList<>();
+        List<Long> child = new ArrayList<>();
+
+        key.add(result.getFirst());
+        child.add(root.getPage().getPageNum());
+        child.add(result.getSecond());
+
+        BPlusNode createdRoot = new InnerNode(metadata, bufferManager, key, child, lockContext);
+        updateRoot(createdRoot);
     }
 
     /**
@@ -306,9 +312,7 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): implement
-
-        return;
+        root.remove(key);
     }
 
     // Helpers /////////////////////////////////////////////////////////////////
@@ -420,20 +424,42 @@ public class BPlusTree {
 
     // Iterator ////////////////////////////////////////////////////////////////
     private class BPlusTreeIterator implements Iterator<RecordId> {
-        // TODO(proj2): Add whatever fields and constructors you want here.
+        private Iterator<RecordId> iterator;
+        private LeafNode node;
+        private Optional<DataBox> key = Optional.empty();
+
+        BPlusTreeIterator(LeafNode node, DataBox key) {
+            this.node = node;
+            this.key = Optional.of(key);
+            this.iterator = node.scanGreaterEqual(key);
+        }
+
+        BPlusTreeIterator(LeafNode node) {
+            this.node = node;
+            this.iterator = node.scanAll();
+        }
 
         @Override
         public boolean hasNext() {
-            // TODO(proj2): implement
+            if (iterator.hasNext()) return true;
 
-            return false;
+            Optional<LeafNode> rightSibling = node.getRightSibling();
+
+            return rightCheck(rightSibling);
+        }
+
+        private boolean rightCheck(Optional<LeafNode> rightSibling) {
+            if (!rightSibling.isPresent()) return false;
+            rightSibling.ifPresent((rightNode) -> {
+                this.node = rightNode;
+                this.iterator = key.isPresent() ? this.node.scanGreaterEqual(this.key.get()) : this.node.scanAll();
+            });
+            return hasNext();
         }
 
         @Override
         public RecordId next() {
-            // TODO(proj2): implement
-
-            throw new NoSuchElementException();
+            return iterator.next();
         }
     }
 }

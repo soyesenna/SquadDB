@@ -5,6 +5,7 @@ import edu.berkeley.cs186.database.common.Pair;
 import edu.berkeley.cs186.database.concurrency.LockContext;
 import edu.berkeley.cs186.database.databox.DataBox;
 import edu.berkeley.cs186.database.databox.Type;
+import edu.berkeley.cs186.database.databox.TypeId;
 import edu.berkeley.cs186.database.memory.BufferManager;
 import edu.berkeley.cs186.database.memory.Page;
 import edu.berkeley.cs186.database.table.RecordId;
@@ -146,27 +147,43 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.get.
     @Override
     public LeafNode get(DataBox key) {
-        // TODO(proj2): implement
-
-        
-
-        return null;
+        return this;
     }
 
     // See BPlusNode.getLeftmostLeaf.
     @Override
     public LeafNode getLeftmostLeaf() {
-        // TODO(proj2): implement
 
-        return null;
+        return this;
     }
 
     // See BPlusNode.put.
     @Override
     public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
-        // TODO(proj2): implement
 
-        return Optional.empty();
+        if (keys.contains(key)) throw new BPlusTreeException("Not Allow Duplicate Key");
+
+        int d = metadata.getOrder();
+        int insertIdx = InnerNode.numLessThan(key, keys);
+
+        keys.add(insertIdx, key);
+        rids.add(insertIdx, rid);
+
+        Optional<Pair<DataBox, Long>> result = Optional.empty();
+        if (this.keys.size() == 2 * d + 1) {
+            LeafNode right = new LeafNode(metadata, bufferManager, keys.subList(d, keys.size()), rids.subList(d, rids.size()), rightSibling, treeContext);
+
+            DataBox split = keys.get(d);
+
+            keys = keys.subList(0, d);
+            rids = rids.subList(0, d);
+            rightSibling = Optional.of(right.getPage().getPageNum());
+
+            result = Optional.of(new Pair<>(split, right.getPage().getPageNum()));
+        }
+
+        sync();
+        return result;
     }
 
     // See BPlusNode.bulkLoad.
@@ -175,15 +192,22 @@ class LeafNode extends BPlusNode {
             float fillFactor) {
         // TODO(proj2): implement
 
+        int d = metadata.getOrder();
+
+
         return Optional.empty();
     }
 
     // See BPlusNode.remove.
     @Override
     public void remove(DataBox key) {
-        // TODO(proj2): implement
+        Optional<RecordId> rid = getKey(key);
 
-        return;
+        if (rid.isPresent()) {
+            keys.remove(key);
+            rids.remove(rid.get());
+        }
+        sync();
     }
 
     // Iterators ///////////////////////////////////////////////////////////////
