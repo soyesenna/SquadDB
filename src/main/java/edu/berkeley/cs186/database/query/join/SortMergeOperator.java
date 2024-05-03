@@ -8,10 +8,7 @@ import edu.berkeley.cs186.database.query.QueryOperator;
 import edu.berkeley.cs186.database.query.SortOperator;
 import edu.berkeley.cs186.database.table.Record;
 
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 public class SortMergeOperator extends JoinOperator {
     public SortMergeOperator(QueryOperator leftSource,
@@ -25,11 +22,6 @@ public class SortMergeOperator extends JoinOperator {
         this.stats = this.estimateStats();
     }
 
-    /**
-     * If the left source is already sorted on the target column then this
-     * returns the leftSource, otherwise it wraps the left source in a sort
-     * operator.
-     */
     private static QueryOperator prepareLeft(TransactionContext transaction,
                                              QueryOperator leftSource,
                                              String leftColumn) {
@@ -38,13 +30,6 @@ public class SortMergeOperator extends JoinOperator {
         return new SortOperator(transaction, leftSource, leftColumn);
     }
 
-    /**
-     * If the right source isn't sorted, wraps the right source in a sort
-     * operator. Otherwise, if it isn't materialized, wraps the right source in
-     * a materialize operator. Otherwise, simply returns the right source. Note
-     * that the right source must be materialized since we may need to backtrack
-     * over it, unlike the left source.
-     */
     private static QueryOperator prepareRight(TransactionContext transaction,
                                               QueryOperator rightSource,
                                               String rightColumn) {
@@ -69,28 +54,10 @@ public class SortMergeOperator extends JoinOperator {
 
     @Override
     public int estimateIOCost() {
-        //does nothing
         return 0;
     }
 
-    /**
-     * An implementation of Iterator that provides an iterator interface for this operator.
-     *    See lecture slides.
-     *
-     * Before proceeding, you should read and understand SNLJOperator.java
-     *    You can find it in the same directory as this file.
-     *
-     * Word of advice: try to decompose the problem into distinguishable sub-problems.
-     *    This means you'll probably want to add more methods than those given (Once again,
-     *    SNLJOperator.java might be a useful reference).
-     *
-     */
     private class SortMergeIterator implements Iterator<Record> {
-        /**
-        * Some member variables are provided for guidance, but there are many possible solutions.
-        * You should implement the solution that's best for you, using any member variables you need.
-        * You're free to use these member variables, but you're not obligated to.
-        */
         private Iterator<Record> leftIterator;
         private BacktrackingIterator<Record> rightIterator;
         private Record leftRecord;
@@ -112,20 +79,12 @@ public class SortMergeOperator extends JoinOperator {
             this.marked = false;
         }
 
-        /**
-         * @return true if this iterator has another record to yield, otherwise
-         * false
-         */
         @Override
         public boolean hasNext() {
             if (this.nextRecord == null) this.nextRecord = fetchNextRecord();
             return this.nextRecord != null;
         }
 
-        /**
-         * @return the next record from this iterator
-         * @throws NoSuchElementException if there are no more records to yield
-         */
         @Override
         public Record next() {
             if (!this.hasNext()) throw new NoSuchElementException();
@@ -134,12 +93,47 @@ public class SortMergeOperator extends JoinOperator {
             return nextRecord;
         }
 
-        /**
-         * Returns the next record that should be yielded from this join,
-         * or null if there are no more records to join.
-         */
         private Record fetchNextRecord() {
-            // TODO(proj3_part1): implement
+            while (leftRecord != null && rightRecord != null) {
+                int cmp = compare(leftRecord, rightRecord);
+                if (cmp == 0) {
+                    if (!marked) {
+                        rightIterator.markPrev();
+                        marked = true;
+                    }
+                    Record joined = leftRecord.concat(rightRecord);
+                    if (!rightIterator.hasNext()) {
+                        rightIterator.reset();
+                        rightRecord = rightIterator.hasNext() ? rightIterator.next() : null;
+                        leftRecord = leftIterator.hasNext() ? leftIterator.next() : null;
+                        marked = false;
+                    } else {
+                        rightRecord = rightIterator.next();
+                    }
+                    return joined;
+                } else if (cmp < 0) {
+                    leftRecord = leftIterator.hasNext() ? leftIterator.next() : null;
+                    if (marked) {
+                        rightIterator.reset();
+                        rightRecord = rightIterator.hasNext() ? rightIterator.next() : null;
+                        marked = false;
+                    }
+                } else {
+                    rightRecord = rightIterator.hasNext() ? rightIterator.next() : null;
+                    if (marked) {
+                        rightIterator.reset();
+                        rightRecord = rightIterator.hasNext() ? rightIterator.next() : null;
+                    }
+                }
+            }
+            if (marked) {
+                rightIterator.reset();
+                rightRecord = rightIterator.hasNext() ? rightIterator.next() : null;
+                marked = false;
+            }
+            if (!marked) {
+                leftRecord = leftIterator.hasNext() ? leftIterator.next() : null;
+            }
             return null;
         }
 

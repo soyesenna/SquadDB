@@ -233,6 +233,28 @@ public class QueryPlan {
             return String.format("INNER JOIN %s AS %s ON %s = %s",
                 unAliased, this.joinTable, this.leftColumn, this.rightColumn);
         }
+
+        public String getLeftTable() {
+            return leftTable;
+        }
+
+        public String getLeftColumn() {
+            return leftColumn;
+        }
+
+        public String getRightTable() {
+            return rightTable;
+        }
+
+        public String getRightColumn() {
+            return rightColumn;
+        }
+
+        public String getJoinTable() {
+            return joinTable;
+        }
+
+        
     }
 
     // Project /////////////////////////////////////////////////////////////////
@@ -575,8 +597,22 @@ public class QueryPlan {
      */
     public QueryOperator minCostSingleAccess(String table) {
         QueryOperator minOp = new SequentialScanOperator(this.transaction, table);
+        int minCost = minOp.estimateIOCost();
 
-        // TODO(proj3_part2): implement
+        int resultIdx = Integer.MAX_VALUE;
+        for (int index : getEligibleIndexColumns(table)) {
+            SelectPredicate selectPredicate = this.selectPredicates.get(index);
+            QueryOperator candidate = new IndexScanOperator(this.transaction, table, selectPredicate.column, selectPredicate.operator, selectPredicate.value);
+            int cost = candidate.estimateIOCost();
+            if (cost < minCost) {
+                minOp = candidate;
+                minCost = cost;
+                resultIdx = index;
+            }
+            
+        }
+        minOp = addEligibleSelections(minOp, resultIdx);
+
         return minOp;
     }
 
@@ -618,20 +654,8 @@ public class QueryPlan {
      * each set of table names being joined to its lowest cost join operator.
      *
      * Join predicates are stored as elements of `this.joinPredicates`.
-     *
-     * @param prevMap  maps a set of tables to a query operator over the set of
-     *                 tables. Each set should have pass number - 1 elements.
-     * @param pass1Map each set contains exactly one table maps to a single
-     *                 table access (scan) query operator.
-     * @return a mapping of table names to a join QueryOperator. The number of
-     * elements in each set of table names should be equal to the pass number.
-     */
-    public Map<Set<String>, QueryOperator> minCostJoins(
-            Map<Set<String>, QueryOperator> prevMap,
-            Map<Set<String>, QueryOperator> pass1Map) {
-        Map<Set<String>, QueryOperator> result = new HashMap<>();
-        // TODO(proj3_part2): implement
-        // We provide a basic description of the logic you have to implement:
+     * 
+     * // We provide a basic description of the logic you have to implement:
         // For each set of tables in prevMap
         //   For each join predicate listed in this.joinPredicates
         //      Get the left side and the right side of the predicate (table name and column)
@@ -646,6 +670,49 @@ public class QueryPlan {
         //      calculate the cheapest join with the new table (the one you
         //      fetched an operator for from pass1Map) and the previously joined
         //      tables. Then, update the result map if needed.
+     *
+     * @param prevMap  maps a set of tables to a query operator over the set of
+     *                 tables. Each set should have pass number - 1 elements.
+     * @param pass1Map each set contains exactly one table maps to a single
+     *                 table access (scan) query operator.
+     * @return a mapping of table names to a join QueryOperator. The number of
+     * elements in each set of table names should be equal to the pass number.
+     * 
+     * 
+     */
+    public Map<Set<String>, QueryOperator> minCostJoins(
+            Map<Set<String>, QueryOperator> prevMap,
+            Map<Set<String>, QueryOperator> pass1Map) {
+        Map<Set<String>, QueryOperator> result = new HashMap<>();
+        for (Map.Entry<Set<String>, QueryOperator> entry : prevMap.entrySet()) {
+            Set<String> prevTables = entry.getKey();
+            QueryOperator prevOp = entry.getValue();
+
+            for (JoinPredicate predicate : this.joinPredicates) {
+                String leftTable = predicate.getLeftTable();
+                String rightTable = predicate.getRightTable();
+                String leftColumn = predicate.getLeftColumn();
+                String rightColumn = predicate.getRightColumn();
+
+                if (prevTables.contains(leftTable) && !prevTables.contains(rightTable)) {
+                    if (pass1Map.containsKey(Collections.singleton(rightTable))) {
+                        QueryOperator rightOp = pass1Map.get(Collections.singleton(rightTable));
+                        QueryOperator newOp = minCostJoinType(prevOp, rightOp, leftColumn, rightColumn);
+                        Set<String> newTables = new HashSet<>(prevTables);
+                        newTables.add(rightTable);
+                        result.put(newTables, newOp);
+                    }
+                } else if (prevTables.contains(rightTable) && !prevTables.contains(leftTable)) {
+                    if (pass1Map.containsKey(Collections.singleton(leftTable))) {
+                        QueryOperator leftOp = pass1Map.get(Collections.singleton(leftTable));
+                        QueryOperator newOp = minCostJoinType(leftOp, prevOp, leftColumn, rightColumn);
+                        Set<String> newTables = new HashSet<>(prevTables);
+                        newTables.add(leftTable);
+                        result.put(newTables, newOp);
+                    }
+                }
+            }
+        }
         return result;
     }
 
@@ -676,26 +743,39 @@ public class QueryPlan {
     }
 
     /**
-     * Generates an optimized QueryPlan based on the System R cost-based query
-     * optimizer.
+     * System R 비용 기반 쿼리 최적화를 기반으로 최적화된 QueryPlan을 생성합니다.
      *
-     * @return an iterator of records that is the result of this query
+     * Pass 1: 각 테이블에 대해 접근하는데 가장 낮은 비용의 QueryOperator를 찾습니다.
+     *         각 테이블 이름과 그에 해당하는 가장 낮은 비용의 연산자를 매핑합니다.
+     *
+     * Pass i: 각 패스에서 이전 패스의 결과를 사용하여 Pass 1의 각 테이블과 가장 낮은 비용의 조인을 찾습니다.
+     *         모든 테이블이 조인될 때까지 반복합니다.
+     *
+     * 마지막 패스에서 가장 낮은 비용의 연산자를 최종 연산자로 설정하고, group by, project, sort 및 limit 연산자를 추가한 후,
+     * 최종 연산자에 대한 레코드의 반복자를 반환합니다.
+     * @return 이 쿼리의 결과인 레코드의 반복자
      */
     public Iterator<Record> execute() {
         this.transaction.setAliasMap(this.aliases);
-        // TODO(proj3_part2): implement
-        // Pass 1: For each table, find the lowest cost QueryOperator to access
-        // the table. Construct a mapping of each table name to its lowest cost
-        // operator.
-        //
-        // Pass i: On each pass, use the results from the previous pass to find
-        // the lowest cost joins with each table from pass 1. Repeat until all
-        // tables have been joined.
-        //
-        // Set the final operator to the lowest cost operator from the last
-        // pass, add group by, project, sort and limit operators, and return an
-        // iterator over the final operator.
-        return this.executeNaive(); // TODO(proj3_part2): Replace this!
+
+        Map<Set<String>, QueryOperator> pass1Map = new HashMap<>();
+        for (String tableName : tableNames) {
+            QueryOperator minOp = minCostSingleAccess(tableName);
+            pass1Map.put(Collections.singleton(tableName), minOp);
+        }
+
+        Map<Set<String>, QueryOperator> result = pass1Map;
+        while (result.size() > 1) {
+            result = minCostJoins(result, pass1Map);
+        }
+
+        finalOperator = minCostOperator(result);
+
+        addGroupBy();
+        addLimit();
+        addProject();
+
+        return finalOperator.iterator();
     }
 
     // EXECUTE NAIVE ///////////////////////////////////////////////////////////

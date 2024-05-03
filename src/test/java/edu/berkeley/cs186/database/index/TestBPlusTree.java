@@ -471,6 +471,24 @@ public class TestBPlusTree {
     }
 
     @Test
+    public void testDeleteEverything() {
+        BPlusTree tree = getBPlusTree(Type.intType(), 2);
+        for (int i = 0; i < 100; i++) {
+            tree.put(new IntDataBox(i), new RecordId(i, (short) i));
+        }
+
+        Iterator<RecordId> iterBeforeDeleting = tree.scanAll();
+        assertTrue(iterBeforeDeleting.hasNext());
+
+        for (int i = 0; i < 100; i++) {
+            tree.remove(new IntDataBox(i));
+        }
+
+        Iterator<RecordId> iterAfterDeleting = tree.scanAll();
+        assertFalse(iterAfterDeleting.hasNext());
+    }
+
+    @Test
     @Category(SystemTests.class)
     public void testMaxOrder() {
         // Note that this white box test depend critically on the implementation

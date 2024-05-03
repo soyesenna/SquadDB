@@ -9,6 +9,9 @@ import edu.berkeley.cs186.database.table.Schema;
 import edu.berkeley.cs186.database.table.stats.TableStats;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public class SortOperator extends QueryOperator {
     protected Comparator<Record> comparator;
@@ -86,8 +89,15 @@ public class SortOperator extends QueryOperator {
      * iterator
      */
     public Run sortRun(Iterator<Record> records) {
-        // TODO(proj3_part1): implement
-        return null;
+        // TODO(proj3_part1): implement DONE
+        List<Record> recordList = new ArrayList<>();
+        while (records.hasNext()) recordList.add(records.next());
+        Collections.sort(recordList, new RecordComparator());
+
+
+        Run sortedRun = new Run(transaction , getSchema());
+        sortedRun.addAll(recordList);
+        return sortedRun;
     }
 
     /**
@@ -107,8 +117,22 @@ public class SortOperator extends QueryOperator {
      */
     public Run mergeSortedRuns(List<Run> runs) {
         assert (runs.size() <= this.numBuffers - 1);
-        // TODO(proj3_part1): implement
-        return null;
+        // TODO(proj3_part1): implement DONE
+
+        PriorityQueue<Record> pRecord = new PriorityQueue<>(new RecordComparator());
+        Run sortRun = new Run(transaction, getSchema());
+
+        for (Run run : runs) {
+            for (Record record : run) {
+                pRecord.offer(record);
+            }
+        }
+
+        while (!pRecord.isEmpty()){
+            sortRun.add(pRecord.poll());
+        }
+
+        return sortRun;
     }
 
     /**
@@ -132,8 +156,17 @@ public class SortOperator extends QueryOperator {
      * @return a list of sorted runs obtained by merging the input runs
      */
     public List<Run> mergePass(List<Run> runs) {
-        // TODO(proj3_part1): implement
-        return Collections.emptyList();
+        // TODO(proj3_part1): implement DONE
+        List<Run> merge = new ArrayList<>();
+        int max = numBuffers - 1;
+
+        for (int i = 0; i + max <= runs.size(); i += max) {
+            merge.add(mergeSortedRuns(
+                    runs.subList(i, Math.min(runs.size(), i + max))
+            ));
+        }
+
+        return merge;
     }
 
     /**
@@ -148,8 +181,18 @@ public class SortOperator extends QueryOperator {
         // Iterator over the records of the relation we want to sort
         Iterator<Record> sourceIterator = getSource().iterator();
 
-        // TODO(proj3_part1): implement
-        return makeRun(); // TODO(proj3_part1): replace this!
+        List<Run> runs = new ArrayList<>();
+
+        while (sourceIterator.hasNext()) {
+            runs.add(sortRun(getBlockIterator(sourceIterator, getSchema(), numBuffers)));
+        }
+
+
+        while (runs.size() > 1) {
+            runs = mergePass(runs);
+        }
+
+        return runs.get(0); // TODO(proj3_part1): replace this DONE!
     }
 
     /**

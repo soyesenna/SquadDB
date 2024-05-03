@@ -44,9 +44,9 @@ public class BNLJOperator extends JoinOperator {
     }
 
     /**
-     * A record iterator that executes the logic for a simple nested loop join.
-     * Look over the implementation in SNLJOperator if you want to get a feel
-     * for the fetchNextRecord() logic.
+     * 간단한 중첩 루프 조인을 위한 로직을 실행하는 레코드 이터레이터입니다.
+     * 느낌이 궁금하다면 SNLJOperator의 구현을 살펴보세요.
+     * fetchNextRecord() 로직에 대한 구현을 살펴보세요.
      */
     private class BNLJIterator implements Iterator<Record>{
         // Iterator over all the records of the left source
@@ -75,45 +75,90 @@ public class BNLJOperator extends JoinOperator {
         }
 
         /**
-         * Fetch the next block of records from the left source.
-         * leftBlockIterator should be set to a backtracking iterator over up to
-         * B-2 pages of records from the left source, and leftRecord should be
-         * set to the first record in this block.
-         *
-         * If there are no more records in the left source, this method should
-         * do nothing.
-         *
-         * You may find QueryOperator#getBlockIterator useful here.
+         * 왼쪽 소스에서 다음 레코드 블록을 가져옵니다.
+         *          * 왼쪽 소스에서 다음 레코드 블록을 가져오려면 왼쪽BlockIterator는 최대
+         *          * 왼쪽 소스에서 레코드의 B-2 페이지까지 역추적 반복기로 설정되어야 하며, leftRecord는
+         *          * 이 블록의 첫 번째 레코드로 설정해야 합니다.
+         *          *
+         *          * 왼쪽 소스에 더 이상 레코드가 없는 경우 이 메서드는
+         *          * 아무것도 하지 않습니다.
+         *          *
+         *          * 여기에서 QueryOperator#getBlockIterator를 유용하게 사용할 수 있습니다.
          */
         private void fetchNextLeftBlock() {
-            // TODO(proj3_part1): implement
+            // TODO(proj3_part1): implement Done
+            this.leftBlockIterator = QueryOperator.getBlockIterator(leftSourceIterator, getLeftSource().getSchema(), numBuffers - 2);
+            this.leftRecord = this.leftBlockIterator.next();
+            this.leftBlockIterator.markPrev();
         }
 
         /**
-         * Fetch the next page of records from the right source.
-         * rightPageIterator should be set to a backtracking iterator over up to
-         * one page of records from the right source.
-         *
-         * If there are no more records in the right source, this method should
-         * do nothing.
-         *
-         * You may find QueryOperator#getBlockIterator useful here.
-         */
+         *올바른 소스에서 레코드의 다음 페이지를 가져옵니다.
+        *          * 오른쪽 페이지 이터레이터는 다음 페이지까지 역추적 이터레이터로 설정해야 합니다.
+        *          * 올바른 소스에서 레코드의 한 페이지까지.
+        *          *
+        *          * 올바른 소스에 더 이상 레코드가 없는 경우, 이 메서드는 다음을 수행해야 합니다.
+        *          * 아무것도 하지 않습니다.
+        *          *
+        *          * 여기에서 QueryOperator#getBlockIterator를 유용하게 사용할 수 있습니다.
+        *          */
         private void fetchNextRightPage() {
-            // TODO(proj3_part1): implement
+            // TODO(proj3_part1): implement Done
+            this.rightPageIterator = QueryOperator.getBlockIterator(rightSourceIterator, getRightSource().getSchema(), 1);
+            this.rightPageIterator.markNext();
         }
 
         /**
-         * Returns the next record that should be yielded from this join,
-         * or null if there are no more records to join.
+         * 이 조인에서 산출해야 하는 다음 레코드를 반환합니다,
+         * 또는 조인할 레코드가 더 이상 없는 경우 null을 반환합니다.
          *
-         * You may find JoinOperator#compare useful here. (You can call compare
-         * function directly from this file, since BNLJOperator is a subclass
-         * of JoinOperator).
+         * 여기서 JoinOperator#compare가 유용할 수 있습니다. (이 파일에서 직접 비교
+         * 함수를 이 파일에서 직접 호출할 수 있습니다.
+         하위 클래스이므로 이 파일에서 직접 비교 * 함수를 호출할 수 있습니다.)
          */
         private Record fetchNextRecord() {
-            // TODO(proj3_part1): implement
-            return null;
+            // TODO(proj3_part1): implement DONE
+
+            Record joinResult = null;
+
+            while (joinResult == null) {
+                if (this.rightPageIterator.hasNext()) {
+                    joinResult = joinRecord();
+                    continue;
+                }
+
+                if (this.leftBlockIterator.hasNext()) {
+                    this.rightPageIterator.reset();
+                    this.leftRecord = this.leftBlockIterator.next();
+                } else if (this.rightSourceIterator.hasNext()) {
+                    this.leftBlockIterator.reset();
+                    this.leftRecord = this.leftBlockIterator.next();
+                    fetchNextRightPage();
+                } else if (this.leftSourceIterator.hasNext()) {
+                    fetchNextLeftBlock();
+                    this.rightSourceIterator.reset();
+                    fetchNextRightPage();
+                } else break;
+
+                joinResult = joinRecord();
+            }
+
+
+            return joinResult;
+        }
+
+        private Record joinRecord() {
+            Record right = this.rightPageIterator.next();
+            Record result = null;
+            if (canJoin(this.leftRecord, right)) {
+                result = this.leftRecord.concat(right);
+            }
+
+            return result;
+        }
+
+        private boolean canJoin(Record left, Record right) {
+            return compare(left, right) == 0;
         }
 
         /**
