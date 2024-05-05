@@ -125,7 +125,7 @@ public class TestLockType {
      * ----+-----+-----+-----+-----+-----+-----
      * SIX |  T  |     |     |     |     |
      * ----+-----+-----+-----+-----+-----+-----
-     * X   |  T  |     |     |     |     |
+     * X   |  T  |  F  |  F |  F  |  F   |  F
      * ----+-----+-----+-----+-----+-----+-----
      *
      * The filled in cells are covered by the public test.

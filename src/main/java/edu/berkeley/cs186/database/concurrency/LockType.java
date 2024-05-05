@@ -21,8 +21,20 @@ public enum LockType {
         if (a == null || b == null) {
             throw new NullPointerException("null lock type");
         }
-        // TODO(proj4_part1): implement
-
+        switch (a) {
+            case NL:
+                return true;
+            case IS:
+                return b == IS || b == IX || b == S || b == NL;
+            case IX:
+                return b == IS || b == IX || b == NL;
+            case S:
+                return b == IS || b == S || b == NL;
+            case SIX:
+                return b == IS || b == NL;
+            case X:
+                return b == NL;
+        }
         return false;
     }
 
@@ -35,13 +47,13 @@ public enum LockType {
             throw new NullPointerException("null lock type");
         }
         switch (a) {
-        case S: return IS;
-        case X: return IX;
-        case IS: return IS;
-        case IX: return IX;
-        case SIX: return IX;
-        case NL: return NL;
-        default: throw new UnsupportedOperationException("bad lock type");
+            case S: return IS;
+            case X: return IX;
+            case IS: return IS;
+            case IX: return IX;
+            case SIX: return IX;
+            case NL: return NL;
+            default: throw new UnsupportedOperationException("bad lock type");
         }
     }
 
@@ -53,9 +65,22 @@ public enum LockType {
         if (parentLockType == null || childLockType == null) {
             throw new NullPointerException("null lock type");
         }
-        // TODO(proj4_part1): implement
-
-        return false;
+        switch (parentLockType) {
+            case IS:
+                return childLockType == S || childLockType == IS || childLockType == NL;
+            case IX:
+                return childLockType == S || childLockType == IS || childLockType == IX || childLockType == SIX || childLockType == X || childLockType == NL;
+            case SIX:
+                return childLockType == S || childLockType == IS || childLockType == NL;
+            case S:
+                return childLockType == NL; // S는 자식 락으로 NL만 허용
+            case X:
+                return childLockType == NL; // X는 자식 락으로 NL만 허용
+            case NL:
+                return childLockType == NL; // NL은 NL만 가능
+            default:
+                return false;
+        }
     }
 
     /**
@@ -68,8 +93,20 @@ public enum LockType {
         if (required == null || substitute == null) {
             throw new NullPointerException("null lock type");
         }
-        // TODO(proj4_part1): implement
-
+        switch (substitute) {
+            case X:
+                return required == S || required == IS || required == IX || required == SIX || required == X;
+            case SIX:
+                return required == S || required == IS || required == IX || required == SIX;
+            case IX:
+                return required == IS || required == IX;
+            case IS:
+                return required == IS;
+            case S:
+                return required == S;
+            case NL:
+                return required == NL;
+        }
         return false;
     }
 
@@ -83,14 +120,13 @@ public enum LockType {
     @Override
     public String toString() {
         switch (this) {
-        case S: return "S";
-        case X: return "X";
-        case IS: return "IS";
-        case IX: return "IX";
-        case SIX: return "SIX";
-        case NL: return "NL";
-        default: throw new UnsupportedOperationException("bad lock type");
+            case S: return "S";
+            case X: return "X";
+            case IS: return "IS";
+            case IX: return "IX";
+            case SIX: return "SIX";
+            case NL: return "NL";
+            default: throw new UnsupportedOperationException("bad lock type");
         }
     }
 }
-
